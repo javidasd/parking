@@ -1,0 +1,22 @@
+services:
+  backend:
+    build: ./Parking.API
+    image: parking-api:latest
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__Default=Data Source=/data/parking.db
+    volumes:
+      - parking-data:/data
+
+  frontend:
+    build: ./parking-ui
+    image: parking-ui:latest
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  parking-data:
