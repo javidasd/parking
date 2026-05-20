@@ -1,7 +1,7 @@
 services:
   backend:
     build: ./Parking.API
-    image: parking-api:latest
+    image: ghcr.io/javidasd/parking/parking-api:latest
     ports:
       - "5000:5000"
     environment:
@@ -12,7 +12,7 @@ services:
 
   frontend:
     build: ./parking-ui
-    image: parking-ui:latest
+    image: ghcr.io/javidasd/parking/parking-ui:latest
     ports:
       - "5173:80"
     depends_on:
