@@ -119,11 +119,12 @@ public class UsersController : ControllerBase
                 return BadRequest("Invalid role");
             user.Role = role;
         }
-        if (!dto.TeamId.HasValue)
-            return BadRequest("Team is required");
-        if (!await _db.Teams.AnyAsync(t => t.Id == dto.TeamId.Value))
-            return BadRequest("Team not found");
-        user.TeamId = dto.TeamId;
+        if (dto.TeamId.HasValue)
+        {
+            if (!await _db.Teams.AnyAsync(t => t.Id == dto.TeamId.Value))
+                return BadRequest("Team not found");
+            user.TeamId = dto.TeamId;
+        }
 
         await _db.SaveChangesAsync();
         return Ok(new UserDto(user.Id, user.Username, user.FullName, user.Role.ToString(), user.TeamId, null));

@@ -126,6 +126,7 @@ const dict: Record<string, Record<Lang, string>> = {
   'report.reservationsCount': { en: 'reservations', fa: 'رزرو' },
   'report.from': { en: 'From', fa: 'از' },
   'report.to': { en: 'To', fa: 'تا' },
+  'nav.changePassword': { en: 'Change Password', fa: 'تغییر رمز عبور' },
 
   // General
   'general.month1': { en: 'Farvardin', fa: 'فروردین' },

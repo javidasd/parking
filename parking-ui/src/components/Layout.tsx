@@ -2,6 +2,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '../i18n';
+import { api } from '../api';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout, isAdmin } = useAuth();
@@ -9,6 +10,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark');
+  const [showPwdForm, setShowPwdForm] = useState(false);
+  const [pwdMsg, setPwdMsg] = useState('');
+
+  const handleChangePassword = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPwdMsg('');
+    const form = new FormData(e.currentTarget);
+    const pwd = form.get('password') as string;
+    const confirm = form.get('confirm') as string;
+    if (pwd !== confirm) { setPwdMsg('Passwords do not match'); return; }
+    if (pwd.length < 4) { setPwdMsg('Password too short'); return; }
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) { setPwdMsg('Not authenticated'); return; }
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const userId = parseInt(payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']);
+      await api.users.update(userId, { password: pwd });
+      setPwdMsg('Password changed');
+      setTimeout(() => { setShowPwdForm(false); setPwdMsg(''); }, 1500);
+    } catch { setPwdMsg('Failed to change password'); }
+  };
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
@@ -66,9 +88,29 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <span style={styles.userRole}>{user?.role}</span>
               </div>
             </div>
+            <button onClick={() => setShowPwdForm(!showPwdForm)} style={styles.themeBtn} title="Change password">🔑</button>
             <button onClick={handleLogout} style={styles.logoutBtn}>🚪 {t('nav.logout')}</button>
           </div>
         </div>
+        {showPwdForm && (
+          <form onSubmit={handleChangePassword} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 24px', borderTop: '1px solid var(--border)',
+            background: 'var(--bg-nav)',
+          }}>
+            <input name="password" type="password" placeholder="New password" required
+              style={{ padding: '6px 12px', borderRadius: 6, border: '1.5px solid var(--border)',
+                fontSize: 13, color: 'var(--text)', background: 'var(--bg-card)', width: 180 }} />
+            <input name="confirm" type="password" placeholder="Confirm password" required
+              style={{ padding: '6px 12px', borderRadius: 6, border: '1.5px solid var(--border)',
+                fontSize: 13, color: 'var(--text)', background: 'var(--bg-card)', width: 180 }} />
+            <button type="submit" style={{
+              padding: '6px 16px', borderRadius: 6, border: 'none',
+              background: '#4f6ef7', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}>Save</button>
+            {pwdMsg && <span style={{ fontSize: 12, color: pwdMsg === 'Password changed' ? '#38a169' : '#e53e3e' }}>{pwdMsg}</span>}
+          </form>
+        )}
       </nav>
       <main style={styles.main}>{children}</main>
     </div>
