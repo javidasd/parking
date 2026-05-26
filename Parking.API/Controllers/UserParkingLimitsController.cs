@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,14 +17,27 @@ public class UserParkingLimitsController : ControllerBase
     public UserParkingLimitsController(AppDbContext db) => _db = db;
 
     [HttpGet]
-    [Authorize(Roles = "SuperAdmin,Admin")]
+    [Authorize]
     public async Task<IActionResult> GetAll()
     {
-        var limits = await _db.UserParkingLimits
-            .Include(l => l.User)
+        var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var currentUser = await _db.Users.FindAsync(currentUserId);
+
+        IQueryable<UserParkingLimit> query = _db.UserParkingLimits.Include(l => l.User);
+
+        if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+        {
+            var all = await query
+                .Select(l => new UserParkingLimitDto(l.Id, l.UserId, l.User.Username, l.MonthlyLimit))
+                .ToListAsync();
+            return Ok(all);
+        }
+
+        var teamLimits = await query
+            .Where(l => l.User.TeamId == currentUser!.TeamId)
             .Select(l => new UserParkingLimitDto(l.Id, l.UserId, l.User.Username, l.MonthlyLimit))
             .ToListAsync();
-        return Ok(limits);
+        return Ok(teamLimits);
     }
 
     [HttpGet("my")]

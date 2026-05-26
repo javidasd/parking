@@ -95,6 +95,11 @@ public class ReservationsController : ControllerBase
         if (existing)
             return BadRequest("Spot already reserved for this date");
 
+        var userReservation = await _db.Reservations
+            .AnyAsync(r => r.UserId == userId && r.PersianDate == dto.PersianDate && !r.IsCancelled);
+        if (userReservation)
+            return BadRequest("You already have a reservation on this date");
+
         var reservation = new Reservation
         {
             UserId = userId,
