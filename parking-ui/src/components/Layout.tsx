@@ -3,15 +3,18 @@ import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '../i18n';
 import { api } from '../api';
+import { useIsMobile } from '../hooks/useMediaQuery';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout, isAdmin } = useAuth();
   const { t, lang, setLang } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark');
   const [showPwdForm, setShowPwdForm] = useState(false);
   const [pwdMsg, setPwdMsg] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleChangePassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -42,7 +45,38 @@ export function Layout({ children }: { children: React.ReactNode }) {
     navigate('/login');
   };
 
+  const closeMenu = () => setMenuOpen(false);
+
   const isActive = (path: string) => location.pathname === path;
+
+  const linkClass = (path: string) => ({
+    ...styles.link,
+    ...(isActive(path) ? styles.linkActive : {}),
+    ...(isMobile ? { width: '100%' } : {}),
+  });
+
+  const navLinkItems = (
+    <>
+      <Link to="/" onClick={closeMenu} style={linkClass('/')}>
+        📅 {t('nav.calendar')}
+        {isActive('/') && <div style={styles.linkDot} />}
+      </Link>
+      <Link to="/my-reservations" onClick={closeMenu} style={linkClass('/my-reservations')}>
+        📋 {t('nav.reservations')}
+        {isActive('/my-reservations') && <div style={styles.linkDot} />}
+      </Link>
+      <Link to="/report" onClick={closeMenu} style={linkClass('/report')}>
+        📊 {t('nav.report')}
+        {isActive('/report') && <div style={styles.linkDot} />}
+      </Link>
+      {isAdmin && (
+        <Link to="/admin" onClick={closeMenu} style={linkClass('/admin')}>
+          ⚙️ {t('nav.admin')}
+          {isActive('/admin') && <div style={styles.linkDot} />}
+        </Link>
+      )}
+    </>
+  );
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-page)' }}>
@@ -54,65 +88,100 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <span style={styles.brandText}>ParkHub</span>
           </div>
-          <div style={styles.navLinks}>
-            <Link to="/" style={{ ...styles.link, ...(isActive('/') ? styles.linkActive : {}) }}>
-              📅 {t('nav.calendar')}
-              {isActive('/') && <div style={styles.linkDot} />}
-            </Link>
-            <Link to="/my-reservations" style={{ ...styles.link, ...(isActive('/my-reservations') ? styles.linkActive : {}) }}>
-              📋 {t('nav.reservations')}
-              {isActive('/my-reservations') && <div style={styles.linkDot} />}
-            </Link>
-            <Link to="/report" style={{ ...styles.link, ...(isActive('/report') ? styles.linkActive : {}) }}>
-              📊 {t('nav.report')}
-              {isActive('/report') && <div style={styles.linkDot} />}
-            </Link>
-            {isAdmin && (
-              <Link to="/admin" style={{ ...styles.link, ...(isActive('/admin') ? styles.linkActive : {}) }}>
-                ⚙️ {t('nav.admin')}
-                {isActive('/admin') && <div style={styles.linkDot} />}
-              </Link>
-            )}
-          </div>
-          <div style={styles.navUser}>
-            <button onClick={() => setIsDark(d => !d)} style={styles.themeBtn}>
-              {isDark ? '☀️' : '🌙'}
-            </button>
-            <button onClick={() => setLang(lang === 'en' ? 'fa' : 'en')} style={styles.themeBtn}>
-              {lang === 'en' ? 'FA' : 'EN'}
-            </button>
-            <div style={styles.userBadge}>
+
+          {isMobile ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={() => setIsDark(d => !d)} style={styles.themeBtn}>
+                {isDark ? '☀️' : '🌙'}
+              </button>
               <div style={styles.userAvatar}>{user?.fullName?.[0] ?? 'U'}</div>
-              <div style={styles.userInfo}>
-                <span style={styles.userName}>{user?.fullName}</span>
-                <span style={styles.userRole}>{user?.role}</span>
-              </div>
+              <button onClick={() => setMenuOpen(!menuOpen)} style={{
+                width: 36, height: 36, borderRadius: 8, fontSize: 18,
+                background: 'var(--bg-subtle)', border: '1px solid var(--border)',
+                color: 'var(--text-secondary)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {menuOpen ? '✕' : '☰'}
+              </button>
             </div>
-            <button onClick={() => setShowPwdForm(!showPwdForm)} style={styles.themeBtn} title="Change password">🔑</button>
-            <button onClick={handleLogout} style={styles.logoutBtn}>🚪 {t('nav.logout')}</button>
-          </div>
+          ) : (
+            <>
+              <div style={styles.navLinks}>
+                {navLinkItems}
+              </div>
+              <div style={styles.navUser}>
+                <button onClick={() => setIsDark(d => !d)} style={styles.themeBtn}>
+                  {isDark ? '☀️' : '🌙'}
+                </button>
+                <button onClick={() => setLang(lang === 'en' ? 'fa' : 'en')} style={styles.themeBtn}>
+                  {lang === 'en' ? 'FA' : 'EN'}
+                </button>
+                <div style={styles.userBadge}>
+                  <div style={styles.userAvatar}>{user?.fullName?.[0] ?? 'U'}</div>
+                  <div style={styles.userInfo}>
+                    <span style={styles.userName}>{user?.fullName}</span>
+                    <span style={styles.userRole}>{user?.role}</span>
+                  </div>
+                </div>
+                <button onClick={() => setShowPwdForm(!showPwdForm)} style={styles.themeBtn} title="Change password">🔑</button>
+                <button onClick={handleLogout} style={styles.logoutBtn}>🚪 {t('nav.logout')}</button>
+              </div>
+            </>
+          )}
         </div>
+
+        {isMobile && menuOpen && (
+          <div style={{
+            borderTop: '1px solid var(--border)',
+            padding: '8px 16px 12px',
+            display: 'flex', flexDirection: 'column', gap: 2,
+          }}>
+            {navLinkItems}
+            <div style={{ height: 1, background: 'var(--border)', margin: '8px 0' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
+              <div style={styles.userAvatar}>{user?.fullName?.[0] ?? 'U'}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{user?.fullName}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{user?.role}</div>
+              </div>
+              <button onClick={() => setLang(lang === 'en' ? 'fa' : 'en')} style={styles.themeBtn}>
+                {lang === 'en' ? 'FA' : 'EN'}
+              </button>
+              <button onClick={() => setShowPwdForm(!showPwdForm)} style={styles.themeBtn} title="Change password">🔑</button>
+            </div>
+            <button onClick={() => { handleLogout(); closeMenu(); }} style={{
+              display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center',
+              background: 'transparent', border: '1px solid var(--border)',
+              color: 'var(--text-secondary)', borderRadius: 8, padding: '8px 14px',
+              cursor: 'pointer', fontSize: 13, fontWeight: 500, width: '100%',
+            }}>🚪 {t('nav.logout')}</button>
+          </div>
+        )}
+
         {showPwdForm && (
           <form onSubmit={handleChangePassword} style={{
             display: 'flex', alignItems: 'center', gap: 10,
             padding: '10px 24px', borderTop: '1px solid var(--border)',
-            background: 'var(--bg-nav)',
+            background: 'var(--bg-nav)', flexWrap: 'wrap',
           }}>
             <input name="password" type="password" placeholder="New password" required
               style={{ padding: '6px 12px', borderRadius: 6, border: '1.5px solid var(--border)',
-                fontSize: 13, color: 'var(--text)', background: 'var(--bg-card)', width: 180 }} />
+                fontSize: 13, color: 'var(--text)', background: 'var(--bg-card)',
+                width: isMobile ? '100%' : 180 }} />
             <input name="confirm" type="password" placeholder="Confirm password" required
               style={{ padding: '6px 12px', borderRadius: 6, border: '1.5px solid var(--border)',
-                fontSize: 13, color: 'var(--text)', background: 'var(--bg-card)', width: 180 }} />
+                fontSize: 13, color: 'var(--text)', background: 'var(--bg-card)',
+                width: isMobile ? '100%' : 180 }} />
             <button type="submit" style={{
               padding: '6px 16px', borderRadius: 6, border: 'none',
               background: '#4f6ef7', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              width: isMobile ? '100%' : 'auto',
             }}>Save</button>
             {pwdMsg && <span style={{ fontSize: 12, color: pwdMsg === 'Password changed' ? '#38a169' : '#e53e3e' }}>{pwdMsg}</span>}
           </form>
         )}
       </nav>
-      <main style={styles.main}>{children}</main>
+      <main style={{ ...styles.main, padding: isMobile ? '16px 12px' : '24px 24px', overflowX: 'hidden' }}>{children}</main>
     </div>
   );
 }

@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api';
 import { useTranslation } from '../i18n';
+import { useIsMobile } from '../hooks/useMediaQuery';
 import type { ParkingSpot, Reservation } from '../types';
 
 function formatPersianDate(year: number, month: number, day: number): string {
@@ -63,6 +64,9 @@ function getDayOfWeek(year: number, month: number): number {
 export function ParkingCalendar() {
   const { t } = useTranslation();
   const { isAuthenticated, isSuperAdmin } = useAuth();
+  const isMobile = useIsMobile();
+  const token = localStorage.getItem('token');
+  const currentUserId = token ? Number(JSON.parse(atob(token.split('.')[1]))['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']) : 0;
   const [spots, setSpots] = useState<ParkingSpot[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [holidays, setHolidays] = useState<string[]>([]);
@@ -70,6 +74,8 @@ export function ParkingCalendar() {
   const [selectedSpot, setSelectedSpot] = useState<number | null>(null);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
+  const [hoveredDay, setHoveredDay] = useState<number | null>(null);
+  const hoverRef = useRef<HTMLDivElement>(null);
 
   const now = new Date();
   const iranMs = now.getTime() - now.getTimezoneOffset() * 60000 + 12600000;
@@ -109,7 +115,11 @@ export function ParkingCalendar() {
     if (currentMonth > todayPersian.month) return false;
     return day < todayPersian.day;
   };
-  const canReserve = (day: number) => !isPast(day) && !isHoliday(day);
+  const canReserve = (day: number) => {
+    if (isPast(day) || isHoliday(day)) return false;
+    const dateStr = formatPersianDate(currentYear, currentMonth, day);
+    return !reservations.some(r => r.userId === currentUserId && r.persianDate === dateStr && !r.isCancelled);
+  };
   const isToday = (day: number) => todayStr === formatPersianDate(currentYear, currentMonth, day);
 
   const getReservationsForDay = (day: number) => {
@@ -142,25 +152,25 @@ export function ParkingCalendar() {
 
   return (
     <div style={c.page}>
-      <div style={c.header}>
+      <div style={{ ...c.header, flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 12 : 0 }}>
         <div>
-          <h2 style={c.title}>📅 {t('calendar.title')}</h2>
+          <h2 style={{ ...c.title, fontSize: isMobile ? 20 : 24 }}>📅 {t('calendar.title')}</h2>
           <p style={c.headerSub}>{t('calendar.subtitle')}</p>
         </div>
         <div style={c.monthNav}>
-          <button onClick={handlePrevMonth} style={c.navBtn} title={t('calendar.prevMonth')}>◀</button>
+          <button onClick={handleNextMonth} style={c.navBtn} title={t('calendar.nextMonth')}>◀</button>
           <div style={c.monthLabel}>
             <span style={c.monthName}>{persianMonthNames[currentMonth - 1]}</span>
             <span style={c.monthYear}>{currentYear}</span>
           </div>
-          <button onClick={handleNextMonth} style={c.navBtn} title={t('calendar.nextMonth')}>▶</button>
+          <button onClick={handlePrevMonth} style={c.navBtn} title={t('calendar.prevMonth')}>▶</button>
         </div>
       </div>
 
-      <div style={c.calendarCard}>
+      <div style={c.calendarCard} className={isMobile ? 'responsive-table' : ''}>
         <div style={c.weekRow}>
           {persianWeekDays.map((d, idx) => (
-            <div key={d} style={{ ...c.weekDay, ...(idx <= 1 ? { color: '#e53e3e' } : {}) }}>{d}</div>
+            <div key={d} style={{ ...c.weekDay, ...(idx <= 1 ? { color: '#e53e3e' } : {}), fontSize: isMobile ? 10 : 12, padding: isMobile ? '8px 4px' : '12px 8px' }}>{isMobile ? d.slice(0, 2) : d}</div>
           ))}
         </div>
         <div style={c.grid}>
@@ -183,6 +193,8 @@ export function ParkingCalendar() {
                 <div
                   key={dayIdx}
                   onClick={() => { if (clickable) { setSelectedDate(dateStr); setSelectedSpot(null); setMessage(''); } }}
+                  onMouseEnter={() => setHoveredDay(day)}
+                  onMouseLeave={() => setHoveredDay(null)}
                   style={{
                     ...c.cell,
                     ...(holiday || weekend ? c.cellWeekend : {}),
@@ -192,29 +204,36 @@ export function ParkingCalendar() {
                     ...(partial && !full ? c.cellPartial : {}),
                     ...(clickable ? c.cellClickable : {}),
                     cursor: clickable ? 'pointer' : 'default',
+                    minHeight: isMobile ? 56 : 88,
+                    padding: isMobile ? '4px 3px' : '8px 6px',
                   }}
                 >
                   <span style={{
                     ...c.dayNum,
                     ...(today ? c.dayNumToday : {}),
                     ...(full ? c.dayNumFull : {}),
+                    fontSize: isMobile ? 12 : 14,
                   }}>{day}</span>
                   <div style={c.cellContent}>
                     {dayReservations.length > 0 ? (
-                      <div style={c.resList}>
-                        {dayReservations.map((r, ri) => (
-                          <div key={r.id} style={c.resItem}>
-                            <span style={{ ...c.spotBadge }}>{r.parkingSpotName}</span>
-                            <span style={c.userLabel}>{r.username}</span>
-                          </div>
-                        ))}
-                      </div>
+                      <span style={{ ...c.freeBadge, fontSize: isMobile ? 9 : 11 }}>{dayReservations.length}/{totalSpots}</span>
                     ) : clickable ? (
-                      <span style={c.freeBadge}>{totalSpots - dayReservations.length} {t('calendar.left')}</span>
+                      <span style={{ ...c.freeBadge, fontSize: isMobile ? 9 : 11 }}>{totalSpots} {t('calendar.left')}</span>
                     ) : null}
-                    {holiday && <span style={c.holidayBadge}>{t('calendar.holiday')}</span>}
-                    {weekend && !holiday && <span style={c.offBadge}>{t('calendar.off')}</span>}
+                    {holiday && <span style={{ ...c.holidayBadge, fontSize: isMobile ? 8 : 10 }}>{t('calendar.holiday')}</span>}
+                    {weekend && !holiday && <span style={{ ...c.offBadge, fontSize: isMobile ? 8 : 10 }}>{t('calendar.off')}</span>}
                   </div>
+
+                  {hoveredDay === day && dayReservations.length > 0 && !isMobile && (
+                    <div ref={hoverRef} style={c.tooltip}>
+                      {dayReservations.map(r => (
+                        <div key={r.id} style={c.tooltipItem}>
+                          <span style={c.tooltipBadge}>{r.parkingSpotName}</span>
+                          <span style={c.tooltipUser}>{r.username}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -223,13 +242,13 @@ export function ParkingCalendar() {
       </div>
 
       {selectedDate && !isSuperAdmin && (
-        <div style={c.reserveCard}>
+        <div style={{ ...c.reserveCard, padding: isMobile ? 16 : 24 }}>
           <div style={c.reserveHeader}>
-            <h3 style={c.reserveTitle}>{t('calendar.reserve')} <span style={c.reserveDate}>{selectedDate}</span></h3>
+            <h3 style={{ ...c.reserveTitle, fontSize: isMobile ? 14 : 15 }}>{t('calendar.reserve')} <span style={c.reserveDate}>{selectedDate}</span></h3>
             <button onClick={() => { setSelectedDate(null); setMessage(''); }} style={c.closeBtn}>✕</button>
           </div>
           <div style={c.reserveBody}>
-            <div style={c.reserveField}>
+            <div style={{ ...c.reserveField, minWidth: isMobile ? '100%' : 240 }}>
               <label style={c.reserveLabel}>{t('calendar.parkingSpot')}</label>
               <select
                 value={selectedSpot ?? ''}
@@ -247,7 +266,7 @@ export function ParkingCalendar() {
                 })}
               </select>
             </div>
-            <button onClick={handleReserve} style={c.reserveBtn} disabled={!selectedSpot || !isAuthenticated}>
+            <button onClick={handleReserve} style={{ ...c.reserveBtn, width: isMobile ? '100%' : 'auto' }} disabled={!selectedSpot || !isAuthenticated}>
               {t('calendar.reserveBtn')}
             </button>
           </div>
@@ -290,7 +309,7 @@ const c: Record<string, React.CSSProperties> = {
   calendarCard: {
     background: 'var(--bg-card)', borderRadius: 16,
     boxShadow: 'var(--shadow-md)',
-    overflow: 'hidden', border: '1px solid var(--border)',
+    border: '1px solid var(--border)',
   },
   weekRow: {
     display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
@@ -322,20 +341,30 @@ const c: Record<string, React.CSSProperties> = {
   dayNumToday: { fontWeight: 700, fontSize: 14, color: '#4f6ef7' },
   dayNumFull: { color: '#fc8181' },
   cellContent: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2, flex: 1 },
-  resList: { display: 'flex', flexDirection: 'column', gap: 2 },
-  resItem: { display: 'flex', alignItems: 'center', gap: 3 },
-  spotBadge: {
-    color: '#fff', fontSize: 10, fontWeight: 700,
-    padding: '2px 6px', borderRadius: 4, lineHeight: '16px',
-    display: 'inline-block', whiteSpace: 'nowrap', background: '#4f6ef7',
-  },
-  userLabel: {
-    color: 'var(--text-secondary)', fontSize: 10, fontWeight: 500,
-    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 50,
-  },
   freeBadge: { color: '#68d391', fontSize: 11, fontWeight: 600 },
   holidayBadge: { fontSize: 10, color: '#fc8181', fontWeight: 600 },
   offBadge: { fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 },
+  tooltip: {
+    position: 'absolute' as any, top: '100%', left: '50%', transform: 'translateX(-50%)',
+    zIndex: 50, minWidth: 180,
+    background: '#1a1a2e', color: '#e2e8f0',
+    borderRadius: 10, padding: '8px 10px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+    display: 'flex', flexDirection: 'column', gap: 4,
+    pointerEvents: 'none',
+  },
+  tooltipItem: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    fontSize: 12, padding: '3px 4px',
+  },
+  tooltipBadge: {
+    background: '#4f6ef7', color: '#fff',
+    padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+    whiteSpace: 'nowrap',
+  },
+  tooltipUser: {
+    color: '#a0aec0', fontSize: 11, fontWeight: 500,
+  },
   reserveCard: {
     background: 'var(--bg-card)', padding: 24, borderRadius: 16, marginTop: 20,
     boxShadow: 'var(--shadow-md)',

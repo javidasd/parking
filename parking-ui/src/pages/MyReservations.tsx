@@ -3,10 +3,54 @@ import { api } from '../api';
 import type { Reservation } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n';
+import { useIsMobile } from '../hooks/useMediaQuery';
+
+function persianToGregorian(py: number, pm: number, pd: number): { year: number; month: number; day: number } {
+  const gy = py + 620;
+  const startDate = new Date(Date.UTC(gy, 2, 1));
+  for (let i = 0; i < 700; i++) {
+    const date = new Date(startDate.getTime() + i * 86400000);
+    const p = gregorianToPersian(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+    if (p.year === py && p.month === pm && p.day === pd) {
+      return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() };
+    }
+  }
+  return { year: 2025, month: 3, day: 21 };
+}
+
+function gregorianToPersian(gy: number, gm: number, gd: number): { year: number; month: number; day: number } {
+  const formatter = new Intl.DateTimeFormat('en-CA-u-ca-persian', {
+    timeZone: 'UTC', year: 'numeric', month: 'numeric', day: 'numeric',
+  });
+  const parts = formatter.formatToParts(new Date(Date.UTC(gy, gm - 1, gd)));
+  let year = 0, month = 0, day = 0;
+  for (const part of parts) {
+    if (part.type === 'year') year = Number(part.value);
+    if (part.type === 'month') month = Number(part.value);
+    if (part.type === 'day') day = Number(part.value);
+  }
+  return { year, month, day };
+}
+
+function getDayName(persianDate: string, lang: 'en' | 'fa'): string {
+  const [y, m, d] = persianDate.split('-').map(Number);
+  const { year: gy, month: gm, day: gd } = persianToGregorian(y, m, d);
+  const dow = new Date(Date.UTC(gy, gm - 1, gd)).getUTCDay();
+  if (lang === 'en') {
+    return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dow];
+  }
+  return ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'][dow];
+}
 
 export function MyReservations() {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const { isAdmin, isSuperAdmin } = useAuth();
+  const isMobile = useIsMobile();
+
+  const formatPersianDate = (persianDate: string) => {
+    const [, m, d] = persianDate.split('-').map(Number);
+    return lang === 'fa' ? `${d}/${m}` : `${m}/${d}`;
+  };
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
@@ -52,19 +96,19 @@ export function MyReservations() {
 
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: isMobile ? 16 : 24 }}>
         <div>
-          <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
+          <h2 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
             📋 {isAdmin ? t('reservations.allTitle') : t('reservations.myTitle')}
           </h2>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+          <p style={{ fontSize: isMobile ? 13 : 14, color: 'var(--text-muted)' }}>
             {isAdmin ? t('reservations.allSubtitle') : t('reservations.mySubtitle')}
           </p>
         </div>
       </div>
 
       {!isAdmin && limit && (
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: isMobile ? 16 : 24, flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row' }}>
           <div style={{ ...s.card, borderLeft: '4px solid #4f6ef7' }}>
             <div style={s.statValue}>{limit.usedCount}</div>
             <div style={s.statLabel}>{t('reservations.reserved')}</div>
@@ -100,32 +144,32 @@ export function MyReservations() {
             {t('reservations.active')}
             <span style={{ ...s.countBadge, background: '#f0fff4', color: '#38a169' }}>{active.length}</span>
           </h3>
-          <div style={s.tableWrap}>
+          <div style={{ ...s.tableWrap }} className="responsive-table">
             <table style={s.table}>
               <thead>
                 <tr>
                   {isAdmin && <th style={s.th}>{t('reservations.user')}</th>}
                   <th style={s.th}>{t('reservations.spot')}</th>
                   <th style={s.th}>{t('reservations.date')}</th>
+                  <th style={s.th}>{t('reservations.day')}</th>
                   <th style={s.th}>{t('reservations.status')}</th>
-                  <th style={s.th}>{t('reservations.action')}</th>
                 </tr>
               </thead>
               <tbody>
                 {active.map(r => (
                   <tr key={r.id}>
                     {isAdmin && <td style={s.td}>{r.username}</td>}
-                    <td style={s.td}><strong>{r.parkingSpotName}</strong></td>
                     <td style={s.td}>
-                      <span style={s.dateBadge}>{r.persianDate}</span>
+                      <strong>{r.parkingSpotName}</strong>
+                    </td>
+                    <td style={s.td}>
+                      <span style={s.dateBadge}>{formatPersianDate(r.persianDate)}</span>
+                    </td>
+                    <td style={s.td}>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>{getDayName(r.persianDate, lang)}</span>
                     </td>
                     <td style={s.td}>
                       <span style={s.statusActive}>{t('reservations.activeLabel')}</span>
-                    </td>
-                    <td style={s.td}>
-                      {isSuperAdmin || canCancel(r.persianDate) ? (
-                        <button onClick={() => handleCancel(r.id)} style={s.cancelBtn}>{t('reservations.cancel')}</button>
-                      ) : null}
                     </td>
                   </tr>
                 ))}
@@ -142,15 +186,15 @@ export function MyReservations() {
             {t('reservations.cancelled')}
             <span style={{ ...s.countBadge, background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>{cancelled.length}</span>
           </h3>
-          <div style={s.tableWrap}>
+          <div style={{ ...s.tableWrap }} className="responsive-table">
             <table style={s.table}>
               <thead>
                 <tr>
                   {isAdmin && <th style={s.th}>{t('reservations.user')}</th>}
                   <th style={s.th}>{t('reservations.spot')}</th>
                   <th style={s.th}>{t('reservations.date')}</th>
+                  <th style={s.th}>{t('reservations.day')}</th>
                   <th style={s.th}>{t('reservations.status')}</th>
-                  <th style={s.th}></th>
                 </tr>
               </thead>
               <tbody>
@@ -159,12 +203,14 @@ export function MyReservations() {
                     {isAdmin && <td style={s.td}>{r.username}</td>}
                     <td style={s.td}>{r.parkingSpotName}</td>
                     <td style={s.td}>
-                      <span style={s.dateBadge}>{r.persianDate}</span>
+                      <span style={s.dateBadge}>{formatPersianDate(r.persianDate)}</span>
+                    </td>
+                    <td style={s.td}>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>{getDayName(r.persianDate, lang)}</span>
                     </td>
                     <td style={s.td}>
                       <span style={s.statusCancelled}>{t('reservations.cancelledLabel')}</span>
                     </td>
-                    <td style={s.td}></td>
                   </tr>
                 ))}
               </tbody>
@@ -174,10 +220,10 @@ export function MyReservations() {
       )}
 
       {reservations.length === 0 && (
-        <div style={s.empty}>
-          <span style={{ fontSize: 48 }}>📋</span>
-          <p style={{ fontWeight: 600, color: 'var(--text-secondary)', marginTop: 12, fontSize: 16 }}>{t('reservations.empty')}</p>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>{t('reservations.emptyHint')}</p>
+        <div style={{ ...s.empty, padding: isMobile ? 40 : 60 }}>
+          <span style={{ fontSize: isMobile ? 36 : 48 }}>📋</span>
+          <p style={{ fontWeight: 600, color: 'var(--text-secondary)', marginTop: 12, fontSize: isMobile ? 15 : 16 }}>{t('reservations.empty')}</p>
+          <p style={{ fontSize: isMobile ? 13 : 14, color: 'var(--text-muted)', marginTop: 4 }}>{t('reservations.emptyHint')}</p>
         </div>
       )}
     </div>
@@ -209,7 +255,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   tableWrap: {
     background: 'var(--bg-card)', borderRadius: 12,
-    boxShadow: 'var(--shadow-sm)', overflow: 'hidden',
+    boxShadow: 'var(--shadow-sm)',
     border: '1px solid var(--border)',
   },
   table: { width: '100%', borderCollapse: 'collapse' },

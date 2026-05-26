@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api';
 import { useTranslation } from '../i18n';
-import type { User, Team, Reservation } from '../types';
+import { useIsMobile } from '../hooks/useMediaQuery';
+import type { User, Reservation } from '../types';
 
 interface TeamUsage {
   teamId: number | null;
@@ -42,9 +43,9 @@ const persianMonthNames = [
 
 export function TeamReport() {
   const { t } = useTranslation();
-  const { isSuperAdmin } = useAuth();
+  const { isAdmin } = useAuth();
+  const isMobile = useIsMobile();
   const [users, setUsers] = useState<User[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [limits, setLimits] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
@@ -65,6 +66,8 @@ export function TeamReport() {
     return years;
   }, [todayPersian.year]);
 
+  const monthsCount = (toYear - fromYear) * 12 + (toMonth - fromMonth) + 1;
+
   const filterStart = `${fromYear}-${String(fromMonth).padStart(2, '0')}-01`;
   const filterEnd = `${toYear}-${String(toMonth).padStart(2, '0')}-31`;
 
@@ -72,14 +75,12 @@ export function TeamReport() {
     (async () => {
       setLoading(true);
       try {
-        const [u, tData, r, l] = await Promise.all([
+        const [u, r, l] = await Promise.all([
           api.users.getTeamMembers().catch(() => [] as User[]),
-          api.teams.getAll().catch(() => [] as Team[]),
           api.reservations.getAll().catch(() => [] as Reservation[]),
           api.limits.getAll().catch(() => [] as { userId: number; monthlyLimit: number }[]),
         ]);
         setUsers(u as User[]);
-        setTeams(tData as Team[]);
         setReservations(r as Reservation[]);
         const limitMap: Record<number, number> = {};
         (l as { userId: number; monthlyLimit: number }[]).forEach(lim => { limitMap[lim.userId] = lim.monthlyLimit; });
@@ -99,7 +100,12 @@ export function TeamReport() {
 
   const teamUsage = useMemo((): TeamUsage[] => {
     const userMap = new Map(users.map(u => [u.id, u]));
-    const teamMap = new Map(teams.map(t => [t.id, t.name]));
+    const teamMap = new Map<number | null, string>();
+    for (const u of users) {
+      if (u.teamId != null && u.teamName && !teamMap.has(u.teamId)) {
+        teamMap.set(u.teamId, u.teamName);
+      }
+    }
 
     const grouped = new Map<number | null, { user: User; active: number; cancelled: number }[]>();
 
@@ -129,7 +135,7 @@ export function TeamReport() {
         totalReservations: m.active,
         activeReservations: m.active,
         cancelledReservations: m.cancelled,
-        monthlyLimit: limits[m.user.id] || 2,
+        monthlyLimit: limits[m.user.id] ?? 2,
       })).sort((a, b) => b.activeReservations - a.activeReservations);
 
       result.push({
@@ -142,7 +148,7 @@ export function TeamReport() {
 
     result.sort((a, b) => (a.teamName || '').localeCompare(b.teamName || ''));
     return result;
-  }, [users, teams, filteredReservations, limits]);
+  }, [users, filteredReservations, limits]);
 
   if (loading) {
     return (
@@ -155,20 +161,20 @@ export function TeamReport() {
 
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>📊 {t('report.title')}</h2>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>
-          {isSuperAdmin ? t('report.subtitle.all') : t('report.subtitle.team')}
+      <div style={{ marginBottom: isMobile ? 16 : 24 }}>
+        <h2 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>📊 {t('report.title')}</h2>
+        <p style={{ fontSize: isMobile ? 13 : 14, color: 'var(--text-muted)' }}>
+          {isAdmin ? t('report.subtitle.all') : t('report.subtitle.team')}
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap', alignItems: 'stretch' }}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap', alignItems: 'stretch', flexDirection: isMobile ? 'column' : 'row' }}>
         <div style={{
           ...card, display: 'flex', alignItems: 'center', gap: 12,
           padding: '10px 16px', flexWrap: 'wrap',
         }}>
           <span style={{ fontSize: 15 }}>📅</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>{t('report.from')}</span>
             <select value={fromYear} onChange={e => setFromYear(Number(e.target.value))} style={selectStyle}>
               {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
@@ -178,7 +184,7 @@ export function TeamReport() {
             </select>
           </div>
           <span style={{ color: 'var(--text-muted)', fontSize: 16, fontWeight: 300 }}>→</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>{t('report.to')}</span>
             <select value={toYear} onChange={e => setToYear(Number(e.target.value))} style={selectStyle}>
               {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
@@ -208,16 +214,16 @@ export function TeamReport() {
 
       {teamUsage.map(tu => (
         <div key={tu.teamId ?? 'none'} style={teamSection}>
-          <h3 style={sectionTitle}>
+          <h3 style={{ ...sectionTitle, fontSize: isMobile ? 16 : 18, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 20 }}>🏢</span> {tu.teamName}
             <span style={{
               fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
-              background: 'var(--bg-subtle)', padding: '2px 10px', borderRadius: 6,
+              background: 'var(--bg-subtle)', padding: '2px 10px', borderRadius: 6, whiteSpace: 'nowrap',
             }}>
               {tu.members.length} {t('report.membersCount')} · {tu.totalReservations} {t('report.reservationsCount')}
             </span>
           </h3>
-          <div style={tableWrap}>
+          <div style={tableWrap} className="responsive-table">
             <table style={table}>
               <thead>
                 <tr>
@@ -232,7 +238,8 @@ export function TeamReport() {
               </thead>
               <tbody>
                 {tu.members.map(m => {
-                  const pct = m.monthlyLimit > 0 ? Math.round((m.activeReservations / m.monthlyLimit) * 100) : 0;
+                  const effectiveLimit = m.monthlyLimit * monthsCount;
+                  const pct = effectiveLimit > 0 ? Math.round((m.activeReservations / effectiveLimit) * 100) : 0;
                   const barColor = pct >= 90 ? '#e53e3e' : pct >= 70 ? '#d69e2e' : '#38a169';
                   return (
                     <tr key={m.user.id}>
@@ -251,8 +258,8 @@ export function TeamReport() {
                       <td style={td}><span style={{ color: 'var(--text-muted)' }}>{m.cancelledReservations}</span></td>
                       <td style={td}><strong>{m.totalReservations}</strong></td>
                       <td style={td}>{m.monthlyLimit}</td>
-                      <td style={{ ...td, minWidth: 120 }}>
-                        <div style={barOuter}>
+                      <td style={{ ...td, minWidth: isMobile ? 100 : 120 }}>
+                        <div style={{ ...barOuter, width: isMobile ? 40 : 60 }}>
                           <div style={{ ...barInner, width: `${Math.min(pct, 100)}%`, background: barColor }} />
                         </div>
                         <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 6 }}>{pct}%</span>
@@ -292,7 +299,7 @@ const sectionTitle: React.CSSProperties = {
 };
 const tableWrap: React.CSSProperties = {
   background: 'var(--bg-card)', borderRadius: 12,
-  boxShadow: 'var(--shadow-sm)', overflow: 'hidden',
+  boxShadow: 'var(--shadow-sm)',
   border: '1px solid var(--border)',
 };
 const table: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };

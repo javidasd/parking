@@ -135,3 +135,25 @@ input:focus, select:focus, textarea:focus {
   75% { background-position: 50% 75%; }
   100% { background-position: 0% 50%; }
 }
+
+.responsive-table {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.responsive-table table {
+  min-width: max-content;
+}
+
+@media (max-width: 768px) {
+  html { font-size: 15px; }
+  .desktop-only { display: none !important; }
+}
+
+@media (min-width: 769px) {
+  .mobile-only { display: none !important; }
+}
+
+@media (max-width: 480px) {
+  html { font-size: 14px; }
+}
