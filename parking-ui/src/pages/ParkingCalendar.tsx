@@ -188,6 +188,7 @@ export function ParkingCalendar() {
               const today = isToday(day);
               const weekend = dayIdx === 0 || dayIdx === 1;
               const clickable = canReserve(day) && !weekend && !isSuperAdmin;
+              const myReservation = dayReservations.find(r => r.userId === currentUserId);
 
               return (
                 <div
@@ -215,7 +216,9 @@ export function ParkingCalendar() {
                     fontSize: isMobile ? 12 : 14,
                   }}>{day}</span>
                   <div style={c.cellContent}>
-                    {dayReservations.length > 0 ? (
+                    {myReservation ? (
+                      <span style={{ ...c.myBadge, fontSize: isMobile ? 8 : 10 }}>{myReservation.parkingSpotName} — {spots.find(s => s.id === myReservation.parkingSpotId)?.location || ''}</span>
+                    ) : dayReservations.length > 0 ? (
                       <span style={{ ...c.freeBadge, fontSize: isMobile ? 9 : 11 }}>{dayReservations.length}/{totalSpots}</span>
                     ) : clickable ? (
                       <span style={{ ...c.freeBadge, fontSize: isMobile ? 9 : 11 }}>{totalSpots} {t('calendar.left')}</span>
@@ -341,6 +344,13 @@ const c: Record<string, React.CSSProperties> = {
   dayNumToday: { fontWeight: 700, fontSize: 14, color: '#4f6ef7' },
   dayNumFull: { color: '#fc8181' },
   cellContent: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2, flex: 1 },
+  myBadge: {
+    color: '#fff', fontSize: 13, fontWeight: 800,
+    padding: '10px 8px', borderRadius: 6,
+    background: '#4f6ef7', whiteSpace: 'nowrap',
+    overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' as any,
+    width: '80%', alignSelf: 'center', flexShrink: 0,
+  },
   freeBadge: { color: '#68d391', fontSize: 11, fontWeight: 600 },
   holidayBadge: { fontSize: 10, color: '#fc8181', fontWeight: 600 },
   offBadge: { fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 },
