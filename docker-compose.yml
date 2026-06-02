@@ -1,18 +1,15 @@
 services:
   backend:
     build: Parking.API
-    image: registry.snappfood.ir/platform/pantheon/parkingapi:latest
     ports:
       - "5025:5000"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__Default=Data Source=/data/parking.db
+      - ASPNETCORE_ENVIRONMENT=Development
     volumes:
       - parking-data:/data
 
   frontend:
     build: parking-ui
-    image: registry.snappfood.ir/platform/pantheon/parkingweb:latest
     ports:
       - "5026:80"
     depends_on:

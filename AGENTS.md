@@ -6,7 +6,7 @@ Full-stack parking reservation system with a .NET 10 Web API backend and React 1
 
 ```
 parking/
-  Parking.API/     -- ASP.NET Core Web API (C#, EF Core + SQLite, JWT auth)
+  Parking.API/     -- ASP.NET Core Web API (C#, EF Core + SQLite/MySQL, JWT auth)
   parking-ui/      -- React 19 + TypeScript SPA (Vite, react-router-dom 7)
 ```
 
@@ -17,15 +17,16 @@ parking/
 | `Parking.API/Dockerfile` | Multi-stage .NET 10 build → aspnet:10.0 runtime, port 5000 |
 | `parking-ui/Dockerfile` | Node 22 build → nginx:alpine static serve, port 80 |
 | `parking-ui/nginx.conf` | Proxies `/api/` → `http://backend:5000`, SPA fallback |
-| `docker-compose.yml` | Backend + frontend services, shared volume for SQLite |
+| `docker-compose.yml` | Backend + frontend services (dev: SQLite) |
+| `docker-compose.prd.yml` | Production overrides (MySQL, JWT secrets) — gitignored |
 | `.github/workflows/ci.yml` | Builds & pushes both images to GHCR on push to `main` |
 
 ```bash
-# Local build & run
+# Local build & run (SQLite)
 docker compose up --build
 
-# Production (pull pre-built images)
-TAG=v1 docker compose up
+# Production (pull pre-built images, use production env)
+docker compose -f docker-compose.prd.yml up
 
 # The nginx proxies /api/* to the backend container (hostname "backend")
 ```
@@ -39,7 +40,7 @@ TAG=v1 docker compose up
 | Layer | Location | Description |
 |---|---|---|
 | Models | `Models/*.cs` | User, Team, ParkingSpot, Reservation, UserParkingLimit |
-| DbContext | `Data/AppDbContext.cs` | EF Core SQLite, fluent config with indexes |
+| DbContext | `Data/AppDbContext.cs` | EF Core fluent config with indexes |
 | Controllers | `Controllers/*.cs` | Auth, Users, Teams, ParkingSpots, Reservations, UserParkingLimits |
 | Services | `Services/AuthService.cs`, `Services/IranHolidayService.cs` | JWT auth, holiday validation |
 | DTOs | `DTOs/AuthDtos.cs` | All request/response records |
@@ -106,3 +107,4 @@ User (1) ── (1) UserParkingLimit (monthlyLimit, default 10)
 9. **Vite proxy** — `/api` -> `localhost:5000` is dev-only; needs production config
 10. **No HTTPS** — Dev runs on HTTP only
 11. **No refresh token mechanism** — 7-day token with no rotation
+12. **MySQL migration** — Switched from SQLite to MySQL (`MySql.EntityFrameworkCore` 10.0.7). App auto-detects provider: SQLite if `Data Source=...`, MySQL if `Server=...`. The `migrate_to_mysql.py` script handles one-time data migration.

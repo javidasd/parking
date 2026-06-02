@@ -24,3 +24,6 @@ Thumbs.db
 
 # Docker export
 docker-images/
+
+# Production compose (contains secrets)
+docker-compose.prd.yml
