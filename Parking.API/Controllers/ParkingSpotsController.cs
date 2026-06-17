@@ -21,8 +21,19 @@ public class ParkingSpotsController : ControllerBase
     public async Task<IActionResult> GetAll([FromQuery] int? teamId)
     {
         var query = _db.ParkingSpots.Include(s => s.Team).AsQueryable();
-        if (teamId.HasValue)
+
+        if (User.Identity?.IsAuthenticated == true
+            && !User.IsInRole("SuperAdmin")
+            && !User.IsInRole("Admin"))
+        {
+            var tid = User.FindFirstValue("TeamId");
+            if (int.TryParse(tid, out var t))
+                query = query.Where(s => s.TeamId == t);
+        }
+        else if (teamId.HasValue)
+        {
             query = query.Where(s => s.TeamId == teamId.Value);
+        }
 
         var spots = await query
             .Select(s => new ParkingSpotDto(s.Id, s.Name, s.Location, s.IsActive, s.TeamId, s.Team!.Name))

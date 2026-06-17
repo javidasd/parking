@@ -215,28 +215,30 @@ export function AdminPanel() {
              <div style={tableWrap} className="responsive-table">
                <table style={table}>
                  <thead>
-                   <tr>
-                     <th style={th}>{t('admin.name')}</th>
-                     <th style={th}>{t('admin.location')}</th>
-                     <th style={th}></th>
-                   </tr>
-                 </thead>
-                <tbody>
-                  {spots.filter(s => s.isActive).map(s => {
-                    const spotReservations = reservations.filter(r => r.parkingSpotId === s.id && !r.isCancelled);
-                    return (
-                       <tr key={s.id}>
-                         <td style={td}><strong>{s.name}</strong></td>
-                         <td style={td}>{s.location}</td>
-                         <td style={td}>
-                           <button onClick={() => handleDeleteSpot(s.id)} style={delBtn}>{t('admin.delete')}</button>
-                         </td>
-                      </tr>
-                    );
-                  })}
-                  {spots.filter(s => s.isActive).length === 0 && (
-                    <tr><td colSpan={6} style={emptyCell}>No active spots</td></tr>
-                  )}
+                    <tr>
+                      <th style={th}>{t('admin.name')}</th>
+                      <th style={th}>{t('admin.location')}</th>
+                      <th style={th}>{t('admin.teams')}</th>
+                      <th style={th}></th>
+                    </tr>
+                  </thead>
+                 <tbody>
+                   {spots.filter(s => s.isActive).map(s => {
+                     const spotReservations = reservations.filter(r => r.parkingSpotId === s.id && !r.isCancelled);
+                     return (
+                        <tr key={s.id}>
+                          <td style={td}><strong>{s.name}</strong></td>
+                          <td style={td}>{s.location}</td>
+                          <td style={td}>{s.teamName || <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                          <td style={td}>
+                            <button onClick={() => handleDeleteSpot(s.id)} style={delBtn}>{t('admin.delete')}</button>
+                          </td>
+                       </tr>
+                     );
+                   })}
+                   {spots.filter(s => s.isActive).length === 0 && (
+                     <tr><td colSpan={6} style={emptyCell}>No active spots</td></tr>
+                   )}
                 </tbody>
               </table>
             </div>
@@ -257,15 +259,16 @@ export function AdminPanel() {
             <h3 style={{ ...sectionTitle, fontSize: isMobile ? 15 : 16 }}>🏢 {t('admin.existingTeams')}</h3>
             <div style={tableWrap} className="responsive-table">
               <table style={table}>
-                <thead><tr><th style={th}>{t('admin.name')}</th><th style={th}></th></tr></thead>
-                <tbody>
-                  {teams.map(tm => (
-                    <tr key={tm.id}>
-                      <td style={td}><strong>{tm.name}</strong></td>
-                      <td style={td}><button onClick={() => handleDeleteTeam(tm.id)} style={delBtn}>{t('admin.delete')}</button></td>
-                    </tr>
-                  ))}
-                  {teams.length === 0 && <tr><td colSpan={2} style={emptyCell}>No teams</td></tr>}
+                 <thead><tr><th style={th}>{t('admin.name')}</th><th style={th}>{t('admin.spots')}</th><th style={th}></th></tr></thead>
+                 <tbody>
+                   {teams.map(tm => (
+                     <tr key={tm.id}>
+                       <td style={td}><strong>{tm.name}</strong></td>
+                       <td style={td}>{spots.filter(s => s.teamId === tm.id && s.isActive).length}</td>
+                       <td style={td}><button onClick={() => handleDeleteTeam(tm.id)} style={delBtn}>{t('admin.delete')}</button></td>
+                     </tr>
+                   ))}
+                   {teams.length === 0 && <tr><td colSpan={3} style={emptyCell}>No teams</td></tr>}
                 </tbody>
               </table>
             </div>

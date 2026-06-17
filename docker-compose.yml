@@ -1,5 +1,6 @@
 services:
   backend:
+    image: registry.snappfood.ir/platform/pantheon/parkingapi:v1.1.1
     build: Parking.API
     ports:
       - "5025:5000"
@@ -9,6 +10,7 @@ services:
       - parking-data:/data
 
   frontend:
+    image: registry.snappfood.ir/platform/pantheon/parkingweb:v1.1.1
     build: parking-ui
     ports:
       - "5026:80"

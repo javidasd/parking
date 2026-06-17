@@ -34,6 +34,13 @@ public class ReservationsController : ControllerBase
             .Include(r => r.ParkingSpot)
             .AsQueryable();
 
+        if (!User.IsInRole("SuperAdmin") && !User.IsInRole("Admin"))
+        {
+            var tid = User.FindFirstValue("TeamId");
+            if (int.TryParse(tid, out var t))
+                query = query.Where(r => r.ParkingSpot.TeamId == t);
+        }
+
         if (!string.IsNullOrEmpty(date))
             query = query.Where(r => r.PersianDate == date);
 
@@ -79,6 +86,13 @@ public class ReservationsController : ControllerBase
         var spot = await _db.ParkingSpots.FindAsync(dto.ParkingSpotId);
         if (spot == null || !spot.IsActive)
             return BadRequest("Parking spot not found or inactive");
+
+        if (!User.IsInRole("SuperAdmin") && !User.IsInRole("Admin"))
+        {
+            var tid = User.FindFirstValue("TeamId");
+            if (int.TryParse(tid, out var t) && spot.TeamId != t)
+                return BadRequest("You can only reserve spots in your team");
+        }
 
         var limit = await _db.UserParkingLimits.FirstOrDefaultAsync(l => l.UserId == userId);
         if (limit != null)
