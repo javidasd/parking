@@ -56,3 +56,16 @@ export interface SetParkingLimit {
   userId: number;
   monthlyLimit: number;
 }
+
+export interface SsoCallbackResponse {
+  token: string | null;
+  username: string | null;
+  fullName: string | null;
+  role: string | null;
+  teamId: number | null;
+  needsRegistration: boolean;
+  phone: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  needsTeam: boolean;
+}

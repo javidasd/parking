@@ -5,6 +5,7 @@ using Parking.API.Data;
 using Parking.API.DTOs;
 using Parking.API.Models;
 
+
 namespace Parking.API.Controllers;
 
 [ApiController]
@@ -17,6 +18,7 @@ public class TeamsController : ControllerBase
     public TeamsController(AppDbContext db) => _db = db;
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetAll()
     {
         var teams = await _db.Teams.Select(t => new TeamDto(t.Id, t.Name)).ToListAsync();

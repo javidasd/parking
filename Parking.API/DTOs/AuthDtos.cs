@@ -15,3 +15,8 @@ public record CreateReservationDto(int ParkingSpotId, string PersianDate);
 public record UserParkingLimitDto(int Id, int UserId, string Username, int MonthlyLimit);
 public record MyLimitDto(int MonthlyLimit, int UsedCount);
 public record SetParkingLimitDto(int UserId, int MonthlyLimit);
+
+public record SsoCallbackRequestDto(string SsoToken, string? FullName, int? TeamId);
+public record SsoCallbackResponseDto(string? Token, string? Username, string? FullName, string? Role, int? TeamId, bool NeedsRegistration, string? Phone, string? FirstName, string? LastName, bool NeedsTeam);
+public record SetTeamDto(int TeamId);
+public record HeimdallValidateResponse(long FoodId, string? Email, string? FirstName, string? LastName, string PhoneNumber, string? UniversalId);

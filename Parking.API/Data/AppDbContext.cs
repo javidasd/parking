@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
             e.HasIndex(u => u.Username).IsUnique();
             e.HasOne(u => u.Team).WithMany(t => t.Users).HasForeignKey(u => u.TeamId);
             e.HasOne(u => u.ParkingLimit).WithOne(l => l.User).HasForeignKey<UserParkingLimit>(l => l.UserId);
+            e.Property(u => u.Source).HasMaxLength(20).HasDefaultValue("Parking");
         });
 
         modelBuilder.Entity<Reservation>(e =>

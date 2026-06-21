@@ -5,9 +5,7 @@ services:
       - "5025:5000"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__Default=Data Source=/data/parking.db
-    volumes:
-      - parking-data:/data
+      - ConnectionStrings__Default=Server=mysql;Port=3306;Database=parking;User=root;Password=${MYSQL_PASSWORD};
 
   frontend:
     image: registry.snappfood.ir/platform/pantheon/parkingweb:latest
@@ -15,6 +13,3 @@ services:
       - "5026:80"
     depends_on:
       - backend
-
-volumes:
-  parking-data:

@@ -12,18 +12,14 @@ builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
 
 var connStr = builder.Configuration.GetConnectionString("Default")!;
-var useMySql = connStr.StartsWith("Server=", StringComparison.OrdinalIgnoreCase)
-    || connStr.StartsWith("Host=", StringComparison.OrdinalIgnoreCase);
 
-builder.Services.AddDbContext<AppDbContext>(opt =>
-{
-    if (useMySql)
-        opt.UseMySQL(connStr);
-    else
-        opt.UseSqlite(connStr);
-});
+builder.Services.AddDbContext<AppDbContext>(opt => opt.UseMySQL(connStr));
 
-builder.Services.AddScoped<AuthService>();
+builder.Services.AddHttpClient<AuthService>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+    });
 builder.Services.AddSingleton<IranHolidayService>();
 
 var key = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!);

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Parking.API.DTOs;
@@ -27,5 +28,26 @@ public class AuthController : ControllerBase
         var result = await _auth.RegisterAsync(dto);
         if (result == null) return BadRequest("Username already exists");
         return Ok(result);
+    }
+
+    [HttpPost("sso-callback")]
+    public async Task<IActionResult> SsoCallback(SsoCallbackRequestDto dto)
+    {
+        var result = await _auth.SsoCallbackAsync(dto);
+        if (result == null) return Unauthorized("Invalid or expired SSO token");
+        return Ok(result);
+    }
+
+    [HttpPut("team")]
+    [Authorize]
+    public async Task<IActionResult> SetTeam(SetTeamDto dto)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !int.TryParse(userIdClaim, out var userId))
+            return Unauthorized();
+
+        var ok = await _auth.SetTeamAsync(userId, dto.TeamId);
+        if (!ok) return NotFound("User not found");
+        return NoContent();
     }
 }

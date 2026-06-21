@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Parking.API.Data;
@@ -15,11 +16,15 @@ public class AuthService
 {
     private readonly AppDbContext _db;
     private readonly IConfiguration _config;
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<AuthService> _logger;
 
-    public AuthService(AppDbContext db, IConfiguration config)
+    public AuthService(AppDbContext db, IConfiguration config, HttpClient httpClient, ILogger<AuthService> logger)
     {
         _db = db;
         _config = config;
+        _httpClient = httpClient;
+        _logger = logger;
     }
 
     public async Task<AuthResponseDto?> LoginAsync(LoginDto dto)
@@ -64,6 +69,112 @@ public class AuthService
             user.Role.ToString(),
             user.TeamId
         );
+    }
+
+    public async Task<SsoCallbackResponseDto?> SsoCallbackAsync(SsoCallbackRequestDto dto)
+    {
+        var heimdallBaseUrl = _config["Heimdall:BaseUrl"]!;
+        var serviceId = _config["Heimdall:ServiceId"]!;
+
+        var validateRequest = new { sso_token = dto.SsoToken, service_id = serviceId };
+        var json = JsonSerializer.Serialize(validateRequest);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        _logger.LogInformation("SsoCallbackAsync: calling Heimdall validate-token for token suffix={Suffix}", 
+            dto.SsoToken.Length > 10 ? dto.SsoToken[^10..] : dto.SsoToken);
+
+        var response = await _httpClient.PostAsync($"{heimdallBaseUrl}/v1/sso/validate-token", content);
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning("Heimdall validate-token returned {Status}: {Body}", response.StatusCode, errorBody);
+            return null;
+        }
+
+        var responseJson = await response.Content.ReadAsStringAsync();
+        _logger.LogInformation("Heimdall response: {Json}", responseJson);
+
+        using var doc = JsonDocument.Parse(responseJson);
+
+        var root = doc.RootElement;
+        if (!root.GetProperty("success").GetBoolean())
+        {
+            _logger.LogWarning("Heimdall validate-token returned success=false: {Json}", responseJson);
+            return null;
+        }
+
+        var data = root.GetProperty("data");
+        var phoneNumber = data.GetProperty("phoneNumber").GetString()!;
+        var foodId = data.GetProperty("food_id").GetInt64();
+        var firstName = data.TryGetProperty("firstName", out var fn) ? fn.GetString() : null;
+        var lastName = data.TryGetProperty("lastName", out var ln) ? ln.GetString() : null;
+
+        _logger.LogInformation("Heimdall parsed: phone={Phone}, foodId={FoodId}, first={First}, last={Last}", 
+            phoneNumber, foodId, firstName, lastName);
+
+        var existingUser = await _db.Users.Include(u => u.Team)
+            .FirstOrDefaultAsync(u => u.Username == foodId.ToString());
+
+        if (existingUser != null)
+        {
+            _logger.LogInformation("User found in DB, returning token for user={Username}", existingUser.Username);
+            return new SsoCallbackResponseDto(
+                GenerateToken(existingUser),
+                existingUser.Username,
+                existingUser.FullName,
+                existingUser.Role.ToString(),
+                existingUser.TeamId,
+                false,
+                null,
+                null, null,
+                false
+            );
+        }
+
+        var displayName = dto.FullName;
+        if (string.IsNullOrEmpty(displayName))
+            displayName = $"{firstName} {lastName}".Trim();
+
+        _logger.LogInformation("Creating new SSO user with foodId={FoodId}, name={Name}", 
+            foodId, displayName);
+
+        var newUser = new User
+        {
+            Username = foodId.ToString(),
+            PasswordHash = "",
+            FullName = displayName,
+            Role = UserRole.User,
+            TeamId = null,
+            Source = "SSO"
+        };
+
+        _db.Users.Add(newUser);
+        await _db.SaveChangesAsync();
+
+        _db.UserParkingLimits.Add(new UserParkingLimit { UserId = newUser.Id, MonthlyLimit = 0 });
+        await _db.SaveChangesAsync();
+
+        return new SsoCallbackResponseDto(
+            GenerateToken(newUser),
+            newUser.Username,
+            newUser.FullName,
+            newUser.Role.ToString(),
+            newUser.TeamId,
+            false,
+            null,
+            null, null,
+            true
+        );
+    }
+
+    public async Task<bool> SetTeamAsync(int userId, int teamId)
+    {
+        var user = await _db.Users.FindAsync(userId);
+        if (user == null) return false;
+
+        user.TeamId = teamId;
+        await _db.SaveChangesAsync();
+        return true;
     }
 
     public string GenerateToken(User user)

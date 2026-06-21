@@ -1,4 +1,4 @@
-const BASE_URL = '/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
 async function request(path: string, options: RequestInit = {}) {
   const token = localStorage.getItem('token');
@@ -23,6 +23,10 @@ export const api = {
       request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
     register: (data: { username: string; password: string; fullName: string; teamId?: number }) =>
       request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+    ssoCallback: (data: { ssoToken: string; fullName?: string; teamId?: number }) =>
+      request('/auth/sso-callback', { method: 'POST', body: JSON.stringify(data) }),
+    setTeam: (data: { teamId: number }) =>
+      request('/auth/team', { method: 'PUT', body: JSON.stringify(data) }),
   },
   teams: {
     getAll: () => request('/teams'),

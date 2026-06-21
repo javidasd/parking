@@ -4,6 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n';
 import { useIsMobile } from '../hooks/useMediaQuery';
 
+const HEIMDALL_BASE_URL = 'http://localhost:5000';
+const SERVICE_ID = 'parking_service';
+
 export function Login() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -26,6 +29,12 @@ export function Login() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSsoLogin = () => {
+    const callbackUrl = `${window.location.origin}/auth/callback`;
+    const loginUrl = `${HEIMDALL_BASE_URL}/Sso/Login?redirect_uri=${encodeURIComponent(callbackUrl)}&service_id=${SERVICE_ID}`;
+    window.location.href = loginUrl;
   };
 
   const p = isMobile ? 20 : 44;
@@ -72,6 +81,12 @@ export function Login() {
               {loading ? t('login.signing') : t('login.signin')}
             </button>
           </form>
+          <div style={styles.divider}>
+            <span style={styles.dividerText}>or</span>
+          </div>
+          <button type="button" style={styles.ssoBtn} onClick={handleSsoLogin}>
+            Login by Snappfood
+          </button>
           <p style={styles.hint}>
             {t('login.demo')}: <strong>superadmin</strong> / <strong>admin123</strong>
           </p>
@@ -121,5 +136,17 @@ const styles: Record<string, React.CSSProperties> = {
   hint: {
     marginTop: 20, fontSize: 13, color: '#a0aec0', textAlign: 'center',
     padding: '12px', background: '#f7f8fc', borderRadius: 8,
+  },
+  divider: {
+    display: 'flex', alignItems: 'center', gap: 12,
+    margin: '16px 0',
+  },
+  dividerText: {
+    fontSize: 13, color: '#a0aec0', whiteSpace: 'nowrap',
+  },
+  ssoBtn: {
+    width: '100%', padding: '11px',
+    background: '#fff', color: '#e53e3e', border: '1.5px solid #e53e3e', borderRadius: 8,
+    fontSize: 15, fontWeight: 600, cursor: 'pointer',
   },
 };

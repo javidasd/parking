@@ -6,6 +6,7 @@ interface AuthContextType {
   user: AuthResponse | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => void;
   isAuthenticated: boolean;
   isSuperAdmin: boolean;
   isAdmin: boolean;
@@ -32,12 +33,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const refreshUser = () => {
+    const stored = localStorage.getItem('user');
+    setUser(stored ? JSON.parse(stored) : null);
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user,
         login,
         logout,
+        refreshUser,
         isAuthenticated: !!user,
         isSuperAdmin: user?.role === 'SuperAdmin',
         isAdmin: user?.role === 'SuperAdmin' || user?.role === 'Admin',
