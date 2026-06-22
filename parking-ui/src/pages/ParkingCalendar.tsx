@@ -274,7 +274,7 @@ export function ParkingCalendar() {
             </button>
           </div>
           {message && (
-            <div style={{ ...c.message, background: 'var(--success-light)', color: 'var(--success)' }}>
+            <div style={{ ...c.message, background: messageType === 'success' ? 'var(--success-light)' : 'var(--danger-light)', color: messageType === 'success' ? 'var(--success)' : 'var(--danger)' }}>
               {messageType === 'success' ? '✓' : '✕'} {message}
             </div>
           )}

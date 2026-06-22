@@ -177,6 +177,9 @@ public class AuthService
         return true;
     }
 
+    public string GetHeimdallBaseUrl() => _config["Heimdall:BaseUrl"] ?? "";
+    public string GetHeimdallServiceId() => _config["Heimdall:ServiceId"] ?? "";
+
     public string GenerateToken(User user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));

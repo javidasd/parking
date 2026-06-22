@@ -159,6 +159,13 @@ public class ReservationsController : ControllerBase
             return BadRequest("Cannot cancel past reservations");
         }
 
+        if (!User.IsInRole("SuperAdmin"))
+        {
+            var gregDate = pc.ToDateTime(resYear, resMonth, resDay, 0, 0, 0, 0);
+            if ((gregDate - today).TotalDays < 7)
+                return BadRequest("Cannot cancel reservations less than 7 days away");
+        }
+
         reservation.IsCancelled = true;
         await _db.SaveChangesAsync();
         return NoContent();

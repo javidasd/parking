@@ -50,4 +50,12 @@ public class AuthController : ControllerBase
         if (!ok) return NotFound("User not found");
         return NoContent();
     }
+
+    [HttpGet("heimdall-config")]
+    public IActionResult GetHeimdallConfig()
+    {
+        var baseUrl = _auth.GetHeimdallBaseUrl();
+        var serviceId = _auth.GetHeimdallServiceId();
+        return Ok(new { baseUrl, serviceId });
+    }
 }

@@ -56,6 +56,7 @@ const dict: Record<string, Record<Lang, string>> = {
   'reservations.user': { en: 'User', fa: 'کاربر' },
   'reservations.spot': { en: 'Spot', fa: 'محل' },
   'reservations.date': { en: 'Date', fa: 'تاریخ' },
+  'reservations.day': { en: 'Day', fa: 'روز' },
   'reservations.status': { en: 'Status', fa: 'وضعیت' },
   'reservations.action': { en: 'Action', fa: 'عملیات' },
   'reservations.cancel': { en: 'Cancel', fa: 'لغو' },

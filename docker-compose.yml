@@ -8,7 +8,7 @@ services:
       - mysql-data:/var/lib/mysql
 
   backend:
-    image: registry.snappfood.ir/platform/pantheon/parkingapi:v1.1.1
+    image: registry.snappfood.ir/platform/pantheon/parkingapi:v2.0.2
     build: Parking.API
     env_file: .env
     ports:
@@ -17,7 +17,7 @@ services:
       - mysql
 
   frontend:
-    image: registry.snappfood.ir/platform/pantheon/parkingweb:v1.1.1
+    image: registry.snappfood.ir/platform/pantheon/parkingweb:v2.0.2
     build: parking-ui
     env_file: .env
     ports:

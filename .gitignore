@@ -27,3 +27,4 @@ docker-images/
 
 # Production compose (contains secrets)
 docker-compose.prd.yml
+.env

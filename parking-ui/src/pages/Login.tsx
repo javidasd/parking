@@ -3,9 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../i18n';
 import { useIsMobile } from '../hooks/useMediaQuery';
-
-const HEIMDALL_BASE_URL = 'http://localhost:5000';
-const SERVICE_ID = 'parking_service';
+import { api } from '../api';
 
 export function Login() {
   const { t } = useTranslation();
@@ -14,6 +12,7 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -31,10 +30,19 @@ export function Login() {
     }
   };
 
-  const handleSsoLogin = () => {
-    const callbackUrl = `${window.location.origin}/auth/callback`;
-    const loginUrl = `${HEIMDALL_BASE_URL}/Sso/Login?redirect_uri=${encodeURIComponent(callbackUrl)}&service_id=${SERVICE_ID}`;
-    window.location.href = loginUrl;
+  const handleSsoLogin = async () => {
+    setSsoLoading(true);
+    setError('');
+    try {
+      const config = await api.auth.getHeimdallConfig();
+      const callbackUrl = `${window.location.origin}/auth/callback`;
+      const loginUrl = `${config.baseUrl}/Sso/Login?redirect_uri=${encodeURIComponent(callbackUrl)}&service_id=${config.serviceId}`;
+      window.location.href = loginUrl;
+    } catch {
+      setError('Failed to load SSO configuration');
+    } finally {
+      setSsoLoading(false);
+    }
   };
 
   const p = isMobile ? 20 : 44;
@@ -84,8 +92,8 @@ export function Login() {
           <div style={styles.divider}>
             <span style={styles.dividerText}>or</span>
           </div>
-          <button type="button" style={styles.ssoBtn} onClick={handleSsoLogin}>
-            Login by Snappfood
+          <button type="button" style={styles.ssoBtn} onClick={handleSsoLogin} disabled={ssoLoading}>
+            {ssoLoading ? 'Connecting...' : 'Login by Snappfood'}
           </button>
           <p style={styles.hint}>
             {t('login.demo')}: <strong>superadmin</strong> / <strong>admin123</strong>

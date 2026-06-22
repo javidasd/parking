@@ -27,6 +27,8 @@ export const api = {
       request('/auth/sso-callback', { method: 'POST', body: JSON.stringify(data) }),
     setTeam: (data: { teamId: number }) =>
       request('/auth/team', { method: 'PUT', body: JSON.stringify(data) }),
+    getHeimdallConfig: (): Promise<{ baseUrl: string; serviceId: string }> =>
+      request('/auth/heimdall-config'),
   },
   teams: {
     getAll: () => request('/teams'),
